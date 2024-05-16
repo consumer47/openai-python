@@ -36,23 +36,20 @@ class CliManager:
 
     async def send_prompt(self, prompt: str) -> Optional[str]:
         # Use the chat completions endpoint for all models
-        stream = await self.client.chat.completions.create(
+        response = await self.client.chat.completions.create(
             model=self.model,
             # prompt=prompt,
             messages=[{"role": "system", "content": "You are a helpful assistant."}, {"role": "user", "content": prompt}],
-            stream=True
+            #  stream=True
         )
-        pass
-        
-        async for chunk in stream:
-            print(chunk.choices[0].delta.content or "", end="")
+        return response.choices[0].message.content
 
-    def run(self) -> None:
+    async def run(self) -> None:
         # Display the initial prompt
         print(f"Initial prompt: {self.init_prompt}")
         
         # Send the initial prompt to the model and get the response
-        init_response: Optional[str] = asyncio.run(self.send_prompt(self.init_prompt))
+        init_response: Optional[str] = await (self.send_prompt(self.init_prompt))
         if init_response:
             self.conversation_context.append(f"You: {init_response}\n")
             print(init_response)
@@ -72,12 +69,13 @@ class CliManager:
             
             # Join the context and send it to the model
             full_context: str = "\n".join(self.conversation_context[-4:])  # Keep only the last 4 exchanges
-            response: Optional[str] = self.send_prompt(full_context)
+            response: Optional[str] = await self.send_prompt(full_context)
             
             # Append the model's response to the context
             if response:
                 self.conversation_context.append(f"GPT: {response}\n")
                 print(f"GPT: {response}")
+                print("")
 
 # gets API Key from environment variable OPENAI_API_KEY
 client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -97,4 +95,4 @@ init_prompt: str = data["prompts"].get(init_prompt_key, "Prompt not found.")
 cli_manager = CliManager(client, init_prompt, model=args.model, file_paths=args.files, dir_path=args.dir)
 
 # Run the CLIManager
-cli_manager.run()
+asyncio.run(cli_manager.run())
