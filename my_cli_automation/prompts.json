@@ -2,6 +2,7 @@
     "prompts" : {
         "kleinanzeigen": "i want to create an announce on ebay kleinanzeigen. It should be in german.item: samsung a8 ",
         "vegan recipe": "easy vegan meal using tofu, soy milk and verduras. When you finished your reponse. write 'Ich habe fertig' as very last sentence.",
-        "aprender espanol": "ayudame con aprender espanol"
+        "aprender espanol": "ayudame con aprender espanol",
+        "programming": "i use vscode and nvim. I have these files that i marked with TODO@GPT. Can you help me there?"
     }
 }

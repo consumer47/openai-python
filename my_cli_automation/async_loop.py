@@ -23,19 +23,14 @@ if args.files:
 if args.dir:
     context_creator.add_folder(args.dir)
 
-# For now, we just print the contents collected by ContextCreator
-print(context_creator.get_contents())
-
-pass
-
 # Load prompts from the JSON file
-with open('openai-python/my_cli_automation/prompts.json', 'r') as file:
+with open('prompts.json', 'r') as file:
     data = json.load(file)
     prompts_list = list(data["prompts"].items())
 
-# Access the prompt by index, for example, index 1 for the second prompt
-index = 1
-active_prompt_key, active_prompt = prompts_list[index]
+# Find the initial prompt based on the argument passed
+init_prompt_key = args.init
+init_prompt = data["prompts"].get(init_prompt_key, "Prompt not found.")
 
 async def send_prompt(prompt):
     try:
@@ -50,6 +45,10 @@ async def send_prompt(prompt):
         return None
 
 async def main() -> None:
+    # Display the initial prompt
+    print(f"Initial prompt: {init_prompt}")
+    
+    # Start the CLI after displaying the initial prompt
     print("Starting the GPT-powered CLI. Type 'exit' to quit.")
     print("You can start by typing your query below:")
     
