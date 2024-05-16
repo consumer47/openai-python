@@ -6,6 +6,8 @@ from typing import List, Optional
 from openai import AsyncOpenAI
 from ContextCreator import ContextCreator
 from arg_parser import parse_args
+from response_filter import filter_response
+
 
 class CliManager:
     def __init__(
@@ -20,7 +22,13 @@ class CliManager:
         self.init_prompt: str = init_prompt
         self.model: str = model
         self.context_creator: ContextCreator = ContextCreator()
-        self.conversation_context: List[str] = [f"You: {init_prompt}\n"]
+        self.conversation_context: List[str] = []
+
+        if not init_prompt and not file_paths and not dir_path:
+            # For empty initialization, do nothing with files and directories, skip init prompt
+            return
+
+        self.conversation_context.append(f"You: {init_prompt}\n")
 
         # Process files and directories if provided
         if file_paths:
@@ -40,20 +48,21 @@ class CliManager:
         # Use the chat completions endpoint for all models
         response = await self.client.chat.completions.create(
             model=self.model,
-            # prompt=prompt,
             messages=[{"role": "system", "content": "You are a helpful assistant."}, {"role": "user", "content": prompt}],
-            #  stream=True
         )
         return response.choices[0].message.content
+    
+    
 
     async def run(self) -> None:
-        # Display the initial prompt
-        print(f"Initial prompt: {self.init_prompt}")
-        # Send the initial prompt to the model and get the response
-        init_response: Optional[str] = await (self.send_prompt(self.conversation_context))
-        if init_response:
-            self.conversation_context.append(f"You: {init_response}\n")
-            print(init_response)
+        if self.conversation_context:
+            # Display the initial prompt if provided
+            print(f"Initial prompt: {self.init_prompt}")
+            # Send the initial prompt to the model and get the response
+            init_response: Optional[str] = await self.send_prompt(self.conversation_context)
+            if init_response:
+                self.conversation_context.append(f"GPT: {init_response}\n")
+                print(f"GPT: {init_response}")
         # Start the CLI after displaying the initial prompt
         print("Starting the GPT-powered CLI. Type 'exit' to quit.")
         print("You can start by typing your query below:")
@@ -65,6 +74,7 @@ class CliManager:
             # Append the user input to the context
             self.conversation_context.append(f"You: {user_input}\n")
             response: Optional[str] = await self.send_prompt(self.conversation_context[-4:])
+            response = filter_response(response)
             # Append the model's response to the context
             if response:
                 self.conversation_context.append(f"GPT: {response}\n")
@@ -75,15 +85,19 @@ class CliManager:
 client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Parse command-line arguments
-args = parse_args()
+args, no_args_passed = parse_args()
 
-# Load prompts from the JSON file
-with open('prompts.json', 'r') as file:
-    data: dict = json.load(file)
+# Initialize empty prompt if no arguments
+init_prompt = ""
 
-# Find the initial prompt based on the argument passed
-init_prompt_key: str = args.init
-init_prompt: str = data["prompts"].get(init_prompt_key, "Prompt not found.")
+if not no_args_passed:
+    # Load prompts from the JSON file
+    with open('prompts.json', 'r') as file:
+        data: dict = json.load(file)
+
+    # Find the initial prompt based on the argument passed
+    init_prompt_key: str = args.init
+    init_prompt = data["prompts"].get(init_prompt_key, "Prompt not found.")
 
 # Create an instance of CLIManager with the initial prompt, files, and directory
 cli_manager = CliManager(client, init_prompt, model=args.model, file_paths=args.files, dir_path=args.dir)
