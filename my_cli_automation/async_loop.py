@@ -2,11 +2,31 @@
 
 import asyncio
 import json
-
 from openai import AsyncOpenAI
+from ContextCreator import ContextCreator
+from arg_parser import parse_args
 
 # gets API Key from environment variable OPENAI_API_KEY
 client = AsyncOpenAI()
+
+# Parse command-line arguments
+args = parse_args()
+
+# Create a ContextCreator instance
+context_creator = ContextCreator()
+
+# If files or directories are provided, read them into the context
+if args.files:
+    for file_path in args.files:
+        context_creator.add_file(file_path)
+
+if args.dir:
+    context_creator.add_folder(args.dir)
+
+# For now, we just print the contents collected by ContextCreator
+print(context_creator.get_contents())
+
+pass
 
 # Load prompts from the JSON file
 with open('openai-python/my_cli_automation/prompts.json', 'r') as file:
