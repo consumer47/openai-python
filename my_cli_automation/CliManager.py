@@ -6,11 +6,24 @@ from openai import AsyncOpenAI
 from ContextCreator import ContextCreator
 from arg_parser import parse_args
 
-class CLIManager:
-    def __init__(self, client, init_prompt):
+class CliManager:
+    def __init__(self, client, init_prompt, file_paths=None, dir_path=None):
         self.client = client
-        self.conversation_context = [f"GPT: {init_prompt}\n"]
         self.init_prompt = init_prompt
+        self.context_creator = ContextCreator()
+        self.conversation_context = [f"GPT: {init_prompt}\n"]
+
+        # Process files and directories if provided
+        if file_paths:
+            for file_path in file_paths:
+                self.context_creator.add_file(file_path)
+        if dir_path:
+            self.context_creator.add_folder(dir_path)
+
+        # Add file and directory contents to the conversation context
+        file_dir_contents = self.context_creator.get_contents()
+        if file_dir_contents:
+            self.conversation_context.append(file_dir_contents)
 
     async def send_prompt(self, prompt):
         try:
@@ -32,6 +45,7 @@ class CLIManager:
         init_response = await self.send_prompt(self.init_prompt)
         self.conversation_context.append(f"You: {init_response}\n")
         print(init_response)
+        
         # Start the CLI after displaying the initial prompt
         print("Starting the GPT-powered CLI. Type 'exit' to quit.")
         print("You can start by typing your query below:")
@@ -61,17 +75,6 @@ client = AsyncOpenAI()
 # Parse command-line arguments
 args = parse_args()
 
-# Create a ContextCreator instance
-context_creator = ContextCreator()
-
-# If files or directories are provided, read them into the context
-if args.files:
-    for file_path in args.files:
-        context_creator.add_file(file_path)
-
-if args.dir:
-    context_creator.add_folder(args.dir)
-
 # Load prompts from the JSON file
 with open('prompts.json', 'r') as file:
     data = json.load(file)
@@ -80,8 +83,8 @@ with open('prompts.json', 'r') as file:
 init_prompt_key = args.init
 init_prompt = data["prompts"].get(init_prompt_key, "Prompt not found.")
 
-# Create an instance of CLIManager with the initial prompt
-cli_manager = CLIManager(client, init_prompt)
+# Create an instance of CLIManager with the initial prompt, files, and directory
+cli_manager = CliManager(client, init_prompt, file_paths=args.files, dir_path=args.dir)
 
 # Run the CLIManager
 asyncio.run(cli_manager.run())

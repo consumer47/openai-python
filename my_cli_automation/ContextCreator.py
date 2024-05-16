@@ -16,4 +16,4 @@ class ContextCreator:
                 self.add_file(file_path)
 
     def get_contents(self):
-        return self.contents
+        return "\n".join(self.contents)
