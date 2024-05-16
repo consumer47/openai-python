@@ -20,7 +20,7 @@ class CliManager:
         self.init_prompt: str = init_prompt
         self.model: str = model
         self.context_creator: ContextCreator = ContextCreator()
-        self.conversation_context: List[str] = [f"GPT: {init_prompt}\n"]
+        self.conversation_context: List[str] = [f"You: {init_prompt}\n"]
 
         # Process files and directories if provided
         if file_paths:
@@ -34,7 +34,9 @@ class CliManager:
         if file_dir_contents:
             self.conversation_context.append(file_dir_contents)
 
-    async def send_prompt(self, prompt: str) -> Optional[str]:
+    async def send_prompt(self, context: List[str], context_len: int=4) -> Optional[str]:
+        prompt = "\n".join(context[-context_len:]) 
+        
         # Use the chat completions endpoint for all models
         response = await self.client.chat.completions.create(
             model=self.model,
@@ -47,30 +49,22 @@ class CliManager:
     async def run(self) -> None:
         # Display the initial prompt
         print(f"Initial prompt: {self.init_prompt}")
-        
         # Send the initial prompt to the model and get the response
-        init_response: Optional[str] = await (self.send_prompt(self.init_prompt))
+        init_response: Optional[str] = await (self.send_prompt(self.conversation_context))
         if init_response:
             self.conversation_context.append(f"You: {init_response}\n")
             print(init_response)
-        
         # Start the CLI after displaying the initial prompt
         print("Starting the GPT-powered CLI. Type 'exit' to quit.")
         print("You can start by typing your query below:")
-        
         while True:
             user_input: str = input("You: ")
             if user_input.lower() == 'exit':
                 print("Exiting the CLI.")
                 break
-            
             # Append the user input to the context
             self.conversation_context.append(f"You: {user_input}\n")
-            
-            # Join the context and send it to the model
-            full_context: str = "\n".join(self.conversation_context[-4:])  # Keep only the last 4 exchanges
-            response: Optional[str] = await self.send_prompt(full_context)
-            
+            response: Optional[str] = await self.send_prompt(self.conversation_context[-4:])
             # Append the model's response to the context
             if response:
                 self.conversation_context.append(f"GPT: {response}\n")
